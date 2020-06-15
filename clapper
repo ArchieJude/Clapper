@@ -1,0 +1,57 @@
+#include "Statistic.h"
+// statistic library will be used to calibrate the threshold value.
+// In other words, it used to filter out ambient sound.
+int micPin =  A0; // ADC0
+int ledOut=8;
+int micValue=0;
+unsigned long t;
+
+Statistic cData; // holds sampled or collected sound data for calibration purposes
+long threshold=0; // this var gets set by calibrate_sound() function
+
+void setup()
+{
+
+  pinMode(micPin,INPUT);
+  pinMode(ledOut,OUTPUT);
+  calibrate_sound(); 
+
+}
+
+void calibrate_sound() {
+  
+  
+  for (int j = 0; j < 100; j++) {
+    cData.add(analogRead(micPin));
+  }
+
+  threshold=cData.average()+cData.pop_stdev()*5; // I found average to be a low threshold... Increase this value if your LED light is getting triggered by outside or ambient sound. 
+                                                 // Lower this value if your LED is not responding to your claps. 
+}
+
+void loop(){
+
+  
+  micValue=analogRead(micPin);
+
+  if (micValue>threshold){
+    t=millis(); // initial time.
+    while((millis()-t)<501){ // time window for the second clap to come through.
+      micValue=analogRead(micPin);
+      
+      if (millis()-t>=350 and micValue>=threshold){ //this is the time window for the second clap. 
+    
+          if (digitalRead(ledOut)==HIGH){ // If the LED is on, then turn it off.
+            digitalWrite(ledOut,LOW);   
+            }
+          else{ // If the LED is off, then turn it on.
+            digitalWrite(ledOut,HIGH);   
+            }
+          t=millis();
+        }
+      else if(millis()-t>50 and millis()-t<350 and micValue>=threshold){ //Here, if the second clap comes in sooner, then break out of the while loop
+        t=millis();
+        }
+      }
+    }
+}
